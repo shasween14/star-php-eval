@@ -1,7 +1,9 @@
 <?php
 
-it('returns a successful response', function () {
-    $response = $this->get('/');
+it('redirects the home page to the article list', function () {
+    $this->get('/')->assertRedirect('/articles');
+});
 
-    $response->assertStatus(200);
+it('shows the article list page', function () {
+    $this->get('/articles')->assertOk();
 });

@@ -1,41 +1,71 @@
-# Candidate Technical Evaluation - Star Media Group
+# News Portal – Laravel Evaluation
 
-## Time Limit: 60 - 90 Minutes
+A small news portal built with Laravel, Eloquent, Blade and Bootstrap, using SQLite.
+It has a JSON articles endpoint, a list page with live search, and an article detail page.
 
-### Prerequisites
-- PHP 8.5+ installed
-- Composer 2.x installed
+## Requirements
 
-### Quick Setup Instructions
-1. Clone this repository to your local machine.
-2. Run `composer install`
-3. Copy the environment file: `cp .env.example .env`
-4. Generate app key: `php artisan key:generate`
-5. Create SQLite file if needed (see database/ folder) and run migrations: `php artisan migrate`
-6. Start dev server: `php artisan serve`
+- PHP (version required by `composer.json`) with the `pdo_sqlite` extension
+- Composer 2.x
 
-### Tasks
-#### 1. **Migrations & Models:** Create the Article and Category models with standard Eloquent relationships (a Category has many Articles).
-- `Category` Model Fields:
-  - `id` (primary key)
-  - `name` (string)
-  - `Article` Model Fields:
-    - `title` (string)
-    - `summary` (string)
-    - `body` (text)
-    - `published_at` (timestamp, nullable)
-    - `permalink` (string)
-    - `category_id` (foreign key referencing `categories`)
-    - _(Optional)_: Add 1 or 2 extra properties you feel are essential for a news portal article (e.g., `status`, `thumbnail_url`, `author`).
-#### 2. **Factories & Database Seeding**
-- Create an `ArticleFactory` using Faker for titles, summary, and body content.
-- Configure `DatabaseSeeder.php` so running `php artisan db:seed` automatically populates the database with at least 5 categories and 20 articles.
-#### 3. **Controller & API Endpoint:** Create a GET controller method returning articles formatted as JSON. Prevent N+1 database queries using eager loading (`with`).
-#### 4. **Frontend Integration:**
-- **Article List View:** Render a list of articles using standard Blade views styled with Bootstrap (or Livewire).
-- **Search Filter:** Implement a simple real-time JavaScript (or Livewire) search filter to filter articles by title on the list page.
-- **Article Detail Page:** Create a single article view page that displays the full title, body, category, and published date when an article from the list is clicked.
+## Setup
 
-### Submission Guidelines
-- Commit code cleanly with clear commit messages.
-- Push your completed work back to your repository and share the repository link with us.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Create the SQLite database file, then migrate and seed:
+
+```bash
+# macOS / Linux
+touch database/database.sqlite
+
+# Windows PowerShell
+New-Item database/database.sqlite -ItemType File
+
+php artisan migrate --seed
+php artisan serve
+```
+
+Open http://localhost:8000 (it redirects to the article list).
+
+To reset the data at any time: `php artisan migrate:fresh --seed`.
+
+## Pages and endpoints
+
+| URL | Description |
+|---|---|
+| `/articles` | Article list with live search |
+| `/articles/{permalink}` | Article detail page |
+| `/api/articles` | JSON list of published articles |
+| `/api/articles?search=term` | Same, filtered by title, author or category name |
+
+## Tests
+
+```bash
+php artisan test
+```
+
+## What was built
+
+- **Models & migration** – `Category` has many `Article`; `Article` belongs to `Category`.
+  `permalink` is unique and is used as the route key, so URLs look like `/articles/some-headline-4821`.
+- **Extra fields** – `author` (byline) and `status` (`1` = published, `0` = draft).
+  Only published articles are shown, through an Eloquent `published` scope; drafts return 404 on the detail page.
+- **Factories & seeder** – `ArticleFactory` / `CategoryFactory` use Faker.
+  `php artisan db:seed` creates 6 categories and 20 articles (17 published, 3 drafts).
+- **JSON API** – `Api\ArticleController@index` returns an `ArticleResource` collection.
+  The category is eager loaded with `with('category')` to avoid N+1 queries.
+- **List page** – Blade + Bootstrap. The page calls the JSON endpoint and renders the cards.
+  The search box is debounced (300 ms) and updates the list as you type; titles are escaped before rendering.
+- **Detail page** – server-rendered Blade view showing title, category, author, published date, summary and body.
+
+## Design notes
+
+- **No pagination.** The data set is small (20 articles). With a larger data set I would use `paginate()`.
+- **Search scope.** The task asks for filtering by title; the search also matches author and category name.
+  The `OR` conditions are grouped so that draft articles can never appear in results.
+- **List via API, detail server-rendered.** The list needs live updates, so it uses `fetch`.
+  The detail page does not, so a normal Blade page is simpler and works on direct links and refresh.
